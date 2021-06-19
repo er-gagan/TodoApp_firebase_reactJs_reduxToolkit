@@ -5,6 +5,7 @@ import { deleteAllTodos } from '../../reducers/todos.js'
 import userImage from './user.png'
 import React from 'react'
 import { toast } from 'react-toastify';
+import firebase from '../../Credentials/Firebase/firebaseCredential'
 
 const Navbar = () => {
     const token = useSelector(state => state.token.data)
@@ -21,11 +22,15 @@ const Navbar = () => {
     }
 
     const logOut = () => {
-        localStorage.clear()
-        dispatch(deleteAllTodos([]))
-        dispatch(addToken(null))
-        history.push("/login");
-        notify("success", "Successfully logged out!", 5000)
+        firebase.auth().signOut().then(() => {
+            localStorage.clear()
+            dispatch(deleteAllTodos([]))
+            dispatch(addToken(null))
+            history.push("/login");
+            notify("success", "Successfully logged out!", 4000)
+        }).catch((error) => {
+            notify("error", `${error.message}, You haven't signout!`, 4000)
+        })
     }
     return (
         <>

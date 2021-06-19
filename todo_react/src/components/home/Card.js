@@ -1,14 +1,12 @@
-import { addTodo, deleteAllTodos, deleteTodo, updateTodo } from '../../reducers/todos.js'
+import { getAuthorizedData } from '../../Credentials/Firebase/SocialAuthentication/getAuthData.js';
 import { setDatefun, setTimefun, Datefun } from './setDateTimeModule.js'
+import { addTodo, deleteAllTodos } from '../../reducers/todos.js'
+import firebase from '../../Credentials/Firebase/firebaseCredential'
 import { useSelector, useDispatch } from 'react-redux'
-import { addToken } from '../../reducers/token.js';
-import React, { useState, useEffect, useCallback } from 'react'
-import { useHistory } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
 import { toast } from 'react-toastify';
-import { baseUrl } from '../../Environment.js';
 
 const Card = () => {
-    const history = useHistory()
     const dispatch = useDispatch()
     const [id, setId] = useState('')
     const [title, setTitle] = useState('')
@@ -16,6 +14,7 @@ const Card = () => {
     const [date, setDate] = useState('')
     const [time, setTime] = useState('')
     const [searchTodos, setSearchTodos] = useState('')
+    const [userUID, setUserUID] = useState('')
 
     const notify = (type, msg, autoClose) => {
         toast(msg, {
@@ -26,42 +25,26 @@ const Card = () => {
         });
     }
 
-    const logOut = useCallback(() => {
-        localStorage.clear()
-        dispatch(deleteAllTodos([]))
-        dispatch(addToken(null))
-        history.push("/login");
-        notify("warning", "Something went wrong! Please check your network and re-loggin", 3000)
-    }, [dispatch, history])
-
     useEffect(() => {
-        try {
-
-            fetch(`${baseUrl}api/todos`, {
-                method: "GET",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    'Authorization': "Bearer " + localStorage.getItem("token")
-                },
-            }).then((result) => {
-                if (result.status === 200) {
-                    result.json().then((response) => {
-                        response.map(todo => {
-                            dispatch(addTodo(todo))
-                            return true
-                        })
+        firebase.auth().onAuthStateChanged((user) => {
+            const userInfo = getAuthorizedData(user)
+            if(userInfo){
+                setUserUID(userInfo['uid'])
+            }
+        })
+        if (userUID.toString()) {
+            firebase.firestore().collection("todos").doc(userUID.toString()).onSnapshot(docSnap => {
+                if (docSnap.exists) {
+                    let allTodos = docSnap.data().todos
+                    dispatch(deleteAllTodos([]))
+                    allTodos.map(todo => {
+                        dispatch(addTodo(todo))
+                        return true
                     })
-                }
-                else {
-                    logOut()
                 }
             })
         }
-        catch {
-            logOut()
-        }
-    }, [dispatch, logOut]);
+    }, [dispatch, userUID]);
 
     const todos = useSelector((state) => state.todos.data);
 
@@ -75,26 +58,18 @@ const Card = () => {
 
     const deletebtn = (id) => {
         try {
-            fetch(`${baseUrl}api/todos`, {
-                method: "DELETE",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    'Authorization': "Bearer " + localStorage.getItem("token")
-                },
-                body: JSON.stringify({ 'id': id })
-            }).then((result) => {
-                if (result.status === 200) {
-                    dispatch(deleteTodo(id))
-                    notify("success", "Todo is deleted successfully!", 2000)
-                }
-                else {
-                    logOut()
-                }
+            const docRef = firebase.firestore().collection("todos").doc(userUID.toString())
+            docRef.get().then(docSnap => {
+                const result = docSnap.data().todos.filter(todo => todo['id'] !== id)
+                docRef.update({
+                    todos: result
+                })
             })
+            dispatch(deleteAllTodos([]))
+            notify("success", "Todo is deleted successfully!", 2000)
         }
-        catch {
-            logOut()
+        catch (error) {
+            notify("warning", "Something went wrong! Please check your network and re-loggin", 4000)
         }
     }
 
@@ -111,26 +86,19 @@ const Card = () => {
         }
 
         try {
-            fetch(`${baseUrl}api/todos`, {
-                method: "PUT",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    'Authorization': "Bearer " + localStorage.getItem("token")
-                },
-                body: JSON.stringify(updatedTodo)
-            }).then((result) => {
-                if (result.status === 200) {
-                    dispatch(updateTodo(updatedTodo))
-                    notify("success", "Todo is updated successfully!", 2000)
-                }
-                else {
-                    logOut()
-                }
+            const docRef = firebase.firestore().collection("todos").doc(userUID.toString())
+            docRef.get().then(docSnap => {
+                const result = docSnap.data().todos.filter(todo => todo['id'] !== id)
+                docRef.update({
+                    todos: [...result, updatedTodo]
+                })
             })
+
+            dispatch(deleteAllTodos([]))
+            notify("success", "Todo is updated successfully!", 2000)
         }
-        catch {
-            logOut()
+        catch (error) {
+            notify("warning", "Something went wrong! Please check your network and re-loggin", 4000)
         }
     }
 
@@ -205,7 +173,6 @@ const Card = () => {
                     </div>
                 </div>
                 {taskItems}
-                {/* <ToastContainer /> */}
             </>
         )
     }

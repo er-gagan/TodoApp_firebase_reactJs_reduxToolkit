@@ -1,16 +1,13 @@
-import { googleProvider, facebookProvider, githubProvider, twitterProvider } from '../../Credentials/Firebase/SocialAuthentication/socialLogin';
 import { checkLength, MainFieldValidationCheck, undefinedValueLength, passwordEyeValidation } from './validation';
-import { getAuthorizedData } from '../../Credentials/Firebase/SocialAuthentication/getAuthData';
+import { googleProvider, facebookProvider, githubProvider, twitterProvider } from '../../Credentials/Firebase/SocialAuthentication/socialLogin';
 import socialMediaAuth from '../../Credentials/Firebase/SocialAuthentication/auth';
+import firebase from '../../Credentials/Firebase/firebaseCredential';
+import React, { useState, useEffect, useCallback } from 'react';
 import { deleteAllTodos } from '../../reducers/todos';
 import { Link, useHistory } from "react-router-dom";
-import React, { useState, useEffect, useCallback } from 'react';
 import { addToken } from '../../reducers/token';
 import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
-import { baseUrl } from '../../Environment';
-
-// import LoadingBar from 'react-top-loading-bar'
 
 const Login = () => {
     const dispatch = useDispatch()
@@ -18,8 +15,6 @@ const Login = () => {
     const [userEmailPhone, setUserEmailPhone] = useState('')
     const [password, setPassword] = useState('')
     const [passwordValidate, setPasswordValidate] = useState(false)
-
-    // const [progress, setProgress] = useState(0)
 
     const notify = (type, msg, autoClose) => {
         toast(msg, {
@@ -37,6 +32,13 @@ const Login = () => {
         history.push("/login");
         notify("warning", "Something went wrong, Please check your internet and credentials!", 3000)
     }, [dispatch, history])
+
+    const logIn = useCallback((token) => {
+        localStorage.setItem("token", token)
+        dispatch(addToken(token))
+        history.push("/")
+        notify("success", "You have successfully logged in", 5000)
+    },[dispatch, history])
 
     // min 6 and max 15 character | atleast one is number | atleast one is special character
     const passwordValidation = (e) => {
@@ -75,156 +77,79 @@ const Login = () => {
         }
     }, [passwordValidate]);
 
-    const submitForm = (e) => {
+    const submitForm = async (e) => {
         e.preventDefault()
-
-        let userLogin = {
-            "userEmailPhone": userEmailPhone,
-            "password": password
-        }
         try {
-            fetch(`${baseUrl}api/loginCredentials`, {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(userLogin)
-            }).then((result) => {
-                if (result.status === 200) {
-                    result.json().then((response) => {
-                        fetch(`${baseUrl}api/login`, {
-                            method: "POST",
-                            headers: {
-                                "Accept": "application/json",
-                                "Content-Type": "application/json",
-                            },
-                            body: JSON.stringify({ 'username': response.username, 'password': password })
-                        }).then((result) => {
-                            if (result.status === 200) {
-                                result.json().then((response) => {
-                                    let _token = response.access
-                                    if (_token) {
-                                        localStorage.setItem("token", _token)
-                                        dispatch(addToken(_token))
-                                        history.push("/");
-                                        notify("success", "You have successfully logged in", 5000)
-                                    }
-                                    else {
-                                        logOut()
-                                        setUserEmailPhone("")
-                                        setPassword("")
-                                        document.getElementById("name").focus()
-
-                                    }
-                                })
-                            }
-                            else {
-                                logOut()
-                            }
-                        })
-                    })
-                }
-                else {
-                    logOut()
-                }
+            await firebase.auth().signInWithEmailAndPassword(userEmailPhone, password)
+            firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
+                logIn(idToken)
+            }).catch(error => {
+                logOut()
             })
         }
-        catch {
+        catch (error) {
             logOut()
         }
     }
 
-    const socialSigninApiCall = useCallback((authProvider) => {
-        fetch(`${baseUrl}api/socialSignin`, {
-            method: "POST",
-            headers: {
-                "Accept": "application/json",
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify(authProvider)
-        }).then((result) => {
-            if (result.status === 200) {
-                fetch(`${baseUrl}api/login`, {
-                    method: "POST",
-                    headers: {
-                        "Accept": "application/json",
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ 'username': authProvider.username, 'password': authProvider.email })
-                }).then((result) => {
-                    if (result.status === 200) {
-                        result.json().then((response) => {
-                            let _token = response.access
-                            if (_token) {
-                                localStorage.setItem("token", _token)
-                                dispatch(addToken(_token))
-                                history.push("/");
-                                notify("success", "You have successfully logged in", 5000)
-                            }
-                            else {
-                                logOut()
-                                setUserEmailPhone("")
-                                setPassword("")
-                                document.getElementById("name").focus()
-                            }
-                        })
-                    }
-                    else {
-                        logOut()
-                    }
-                })
-            }
-            else {
-                logOut()
-            }
-        })
-    }, [dispatch, history, logOut])
-
-
+    // Sign in with social media logic
     useEffect(() => {
         passwordEyeValidation()
         document.getElementById("googleDiv").addEventListener("click", async () => {
             const response = await socialMediaAuth(googleProvider)
             if (response.a !== null) {
-                let googleAuth = getAuthorizedData(response)
-                socialSigninApiCall(googleAuth)
-
+                firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
+                    logIn(idToken)
+                }).catch(error => {
+                    logOut()
+                })
+            } else {
+                logOut()
             }
         })
 
         document.getElementById("facebookDiv").addEventListener("click", async () => {
             const response = await socialMediaAuth(facebookProvider)
             if (response.a !== null) {
-                let facebookAuth = getAuthorizedData(response)
-                socialSigninApiCall(facebookAuth)
+                firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
+                    logIn(idToken)
+                }).catch(error => {
+                    logOut()
+                })
+            } else {
+                logOut()
             }
         })
 
         document.getElementById("githubDiv").addEventListener("click", async () => {
             const response = await socialMediaAuth(githubProvider)
             if (response.a !== null) {
-                let githubAuth = getAuthorizedData(response)
-                socialSigninApiCall(githubAuth)
+                firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
+                    logIn(idToken)
+                }).catch(error => {
+                    logOut()
+                })
+            } else {
+                logOut()
             }
         })
 
         document.getElementById("twitterDiv").addEventListener("click", async () => {
             const response = await socialMediaAuth(twitterProvider)
             if (response.a !== null) {
-                let twitterAuth = getAuthorizedData(response)
-                socialSigninApiCall(twitterAuth)
+                firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
+                    logIn(idToken)
+                }).catch(error => {
+                    logOut()
+                })
+            } else {
+                logOut()
             }
         })
-    }, [dispatch, history, logOut, socialSigninApiCall])
+    }, [dispatch, history, logOut, logIn])
 
     return (
         <>
-            {/* <LoadingBar
-                color='#f11946'
-                progress={progress}
-                onLoaderFinished={() => setProgress(0)}
-            /> */}
             <div className="container my-2">
                 <div className="row">
                     <div className="col-md-6 text-center">
@@ -256,8 +181,8 @@ const Login = () => {
                         <form onSubmit={submitForm} id="myForm1">
 
                             <div className="mb-3">
-                                <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="name" className="form-label">Enter Username, Email or Phone</label>
-                                <input required autoFocus type="text" className="form-control" id="name" placeholder="Please type your username, email or phone" onChange={(e) => setUserEmailPhone(e.target.value)} value={userEmailPhone} />
+                                <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="name" className="form-label">Enter Username or Email</label>
+                                <input required autoFocus type="text" className="form-control" id="name" placeholder="Please type your username or email" onChange={(e) => setUserEmailPhone(e.target.value)} value={userEmailPhone} />
                             </div>
 
                             <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="password" className="form-label">Password</label>

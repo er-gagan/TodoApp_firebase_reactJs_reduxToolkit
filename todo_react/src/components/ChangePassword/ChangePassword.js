@@ -5,7 +5,7 @@ import { addToken } from '../../reducers/token'
 import { useHistory } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
 import { toast } from 'react-toastify'
-import { baseUrl } from '../../Environment'
+import firebase from '../../Credentials/Firebase/firebaseCredential'
 
 const ChangePassword = () => {
     const dispatch = useDispatch()
@@ -144,33 +144,24 @@ const ChangePassword = () => {
         confirmPasswordEyeValidation()
     }, [])
 
-
-
     const submitForm = (e) => {
         e.preventDefault()
-        const passwordCredentials = {
-            "currentPassword": currentPassword,
-            "newPassword": newPassword
-        }
         try {
-            fetch(`${baseUrl}api/change_password`, {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    'Authorization': "Bearer " + localStorage.getItem("token")
-                },
-                body: JSON.stringify(passwordCredentials)
-            }).then((result) => {
-                if (result.status === 202) {
-                    notify("success", `Password has successfully Changed!`, 4000)
-                }
-                else {
-                    notify("error", `Something went wrong! Maybe invallid current password or network issue occurd!`, 5000)
-                }
+            const user = firebase.auth().currentUser;
+            let credential = firebase.auth.EmailAuthProvider.credential(
+                firebase.auth().currentUser.email,
+                currentPassword
+            );
+
+            user.reauthenticateWithCredential(credential).then(() => {
+                user.updatePassword(newPassword)
+                history.push('/')
+                notify("success", `Password has successfully changed!`, 4000)
+            }).catch(error => {
+                notify("error", error.message, 4000)
             })
         }
-        catch {
+        catch (error) {
             logOut()
         }
     }

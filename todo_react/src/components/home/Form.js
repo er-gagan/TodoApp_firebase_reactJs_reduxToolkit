@@ -1,17 +1,20 @@
-import { addTodo, deleteAllTodos } from '../../reducers/todos.js'
+import { getAuthorizedData } from '../../Credentials/Firebase/SocialAuthentication/getAuthData.js';
+import firebase from '../../Credentials/Firebase/firebaseCredential'
+import { deleteAllTodos } from '../../reducers/todos.js'
 import { ToastContainer, toast } from 'react-toastify';
 import { setDatefun } from './setDateTimeModule.js'
 import { addToken } from '../../reducers/token.js';
 import { useHistory } from 'react-router-dom';
 import { useDispatch } from 'react-redux'
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import cuid from 'cuid'
-import { baseUrl } from '../../Environment.js';
 
 const Form = () => {
     const history = useHistory()
     const [title, setTitle] = useState('')
     const [desc, setDesc] = useState('')
+    const [userUID, setUserUID] = useState('')
+    const [allTodos, setAllTodos] = useState([])
     const dispatch = useDispatch()
 
     const notify = (type, msg, autoClose) => {
@@ -23,43 +26,54 @@ const Form = () => {
         });
     }
 
-    const logOut = () => {
+    const logOut = useCallback(() => {
         localStorage.clear()
         dispatch(deleteAllTodos([]))
         dispatch(addToken(null))
         history.push("/login");
         notify("warning", "Something went wrong! Please check your network", 3000)
-    }
+    },[dispatch, history])
+
+    useEffect(() => {
+        try {
+            firebase.auth().onAuthStateChanged((user) => {
+                const userInfo = getAuthorizedData(user)
+                if(userInfo){
+                    setUserUID(userInfo['uid'])
+                }
+            })
+            if (userUID.toString()) {
+                const unsubscribe = firebase.firestore().collection("todos").doc(userUID.toString()).onSnapshot(docSnap => {
+                    if (docSnap.exists) {
+                        setAllTodos(docSnap.data().todos)
+                    }
+                })
+                return () => {
+                    unsubscribe()
+                }
+            }
+        }
+        catch (error) {
+            logOut()
+        }
+    }, [userUID, logOut])
 
     const handleFormSubmit = (e) => {
         e.preventDefault()
         let dateObj = setDatefun()
-        let user = {
+        let todoInfo = {
             'id': cuid(),
             'Title': title,
             'Description': desc,
             'Date': String(new Date(dateObj.yyyy, dateObj.mm, dateObj.dd, dateObj.hours, dateObj.minutes, dateObj.seconds))
         }
         try {
-            fetch(`${baseUrl}api/todos`, {
-                method: "POST",
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                    'Authorization': "Bearer " + localStorage.getItem("token")
-                },
-                body: JSON.stringify(user)
-            }).then((result) => {
-                if (result.status === 200) {
-                    dispatch(addTodo(user))
-                    notify("success", "Todo is added successfully!", 2000)
-                }
-                else {
-                    logOut()
-                }
-            })
+            // If collection isn't exist then created.
+            firebase.firestore().collection("todos").doc(userUID.toString()).set({ todos: [...allTodos, todoInfo] })
+            dispatch(deleteAllTodos([]))
+            notify("success", "Todo is added successfully!", 2000)
         }
-        catch {
+        catch (error) {
             logOut()
         }
 
