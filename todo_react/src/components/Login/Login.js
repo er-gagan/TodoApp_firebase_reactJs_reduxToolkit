@@ -30,7 +30,7 @@ const Login = () => {
         dispatch(deleteAllTodos([]))
         dispatch(addToken(null))
         history.push("/login");
-        notify("warning", "Something went wrong, Please check your internet and credentials!", 3000)
+        notify("error", "Something went wrong, Please check your internet and credentials and verify email!", 5000)
     }, [dispatch, history])
 
     const logIn = useCallback((token) => {
@@ -38,7 +38,7 @@ const Login = () => {
         dispatch(addToken(token))
         history.push("/")
         notify("success", "You have successfully logged in", 5000)
-    },[dispatch, history])
+    }, [dispatch, history])
 
     // min 6 and max 15 character | atleast one is number | atleast one is special character
     const passwordValidation = (e) => {
@@ -80,9 +80,16 @@ const Login = () => {
     const submitForm = async (e) => {
         e.preventDefault()
         try {
-            await firebase.auth().signInWithEmailAndPassword(userEmailPhone, password)
-            firebase.auth().currentUser.getIdToken().then(idToken => {  // generate jwt
-                logIn(idToken)
+            await firebase.auth().signInWithEmailAndPassword(userEmailPhone, password).then((user) => {
+                if (user.user.emailVerified) {
+                    user.user.getIdToken().then(idToken => {  // generate jwt
+                        logIn(idToken)
+                    }).catch(error => {
+                        logOut()
+                    })
+                } else {
+                    logOut()
+                }
             }).catch(error => {
                 logOut()
             })

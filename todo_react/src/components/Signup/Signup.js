@@ -144,9 +144,17 @@ const Signup = () => {
         e.preventDefault()
         setLoading(true)
         try {
-            await firebase.auth().createUserWithEmailAndPassword(email, password)
-            history.push('/login')
-            notify("success", "You have successfully Signed up! Please Login..", 5000)
+            await firebase.auth().createUserWithEmailAndPassword(email, password).then((user) => {
+                // user.user.
+                user.user.sendEmailVerification().then(() => {
+                    notify("info", `We sent a mail to ${email} for email verification! Please verify your email! If email ${email} is invallid then the request is automatically killed!`, 8000)
+                    history.push('/login')
+                }).catch(error => {
+                    notify("error", `We not verify your email ${email}! Please try again`, 5000)
+                })
+            }).catch(error => {
+                notify("error", error.message, 4000)
+            })
         } catch (error) {
             notify("error", `Something went wrong, ${error.message}`, 5000)
         }
