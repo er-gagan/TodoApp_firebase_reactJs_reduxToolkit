@@ -17,7 +17,6 @@ const Signup = () => {
     const history = useHistory()
     const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
-    const [profilePic, setProfilePic] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     // state for submit button validation start
@@ -41,7 +40,7 @@ const Signup = () => {
         let matchPassword = document.getElementById("matchPassword")
         let pass1 = document.getElementById("pass1")
         let pass2 = document.getElementById("pass2")
-        if (usernameValidate && emailValidate && passwordValidate && confirmPasswordValidate &&profilePic) {
+        if (usernameValidate && emailValidate && passwordValidate && confirmPasswordValidate) {
             if (checkPassword(password, confirmPassword)) {
                 document.getElementById('submitBtn').disabled = false
                 matchPasswordValid(matchPassword, pass1, pass2)
@@ -54,7 +53,7 @@ const Signup = () => {
         else {
             document.getElementById('submitBtn').disabled = true
         }
-    }, [usernameValidate, emailValidate, passwordValidate, profilePic, confirmPasswordValidate, confirmPassword, password]);
+    }, [usernameValidate, emailValidate, passwordValidate, confirmPasswordValidate, confirmPassword, password]);
 
     const usernameValidation = (e) => {
         let Value = e.target.value
@@ -170,29 +169,12 @@ const Signup = () => {
         confirmPasswordEyeValidation()
     }, []);
 
-    const uploadProfilePic = (user) => {
-        const storageRef = firebase.storage().ref().child(`/users/${user.uid}/profile`)
-        const uploadTask = storageRef.put(profilePic)
-        uploadTask.on('state_changed', (snapshot) => {
-            let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(progress);
-        }, (error) => {
-            console.log(error.message);
-        }, () => {
-            console.log("Image Uploaded");
-            uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
-                user.updateProfile({ photoURL: downloadURL })
-            });
-        })
-    }
-
     const submitForm = async (e) => {
         e.preventDefault()
         setLoading(true)
         try {
             await firebase.auth().createUserWithEmailAndPassword(email, password).then((user) => {
                 user.user.updateProfile({ displayName: username }).then(() => {
-                    uploadProfilePic(user.user)
                     user.user.sendEmailVerification().then(() => {
                         notify("info", `We sent a mail to ${email} for email verification! Please verify your email! If email ${email} is invallid then the request is automatically killed!`, 8000)
                         history.push('/login')
@@ -230,17 +212,6 @@ const Signup = () => {
                                 <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="email" className="form-label">Email address</label>
                                 <input required type="email" className="form-control" id="email" placeholder="name@example.com" onChange={(e) => emailValidation(e)} value={email} />
                                 <div id="emailMsg"></div>
-                            </div>
-                        </div>
-
-                        <div className="col-md-6">
-                            <label htmlFor="formFile" className="form-label">Upload profile pic</label>
-                            <div className="mb-3 input-group">
-                                <input className="form-control" type="file" id="formFile" accept="image/*" onChange={(e) => setProfilePic(e.target.files[0])} />
-                                {profilePic ?
-                                    <img src={URL.createObjectURL(profilePic)} width="8%" className="input-group-text" alt="No Img" />
-                                    : <></>
-                                }
                             </div>
                         </div>
 
