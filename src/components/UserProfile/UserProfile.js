@@ -107,7 +107,20 @@ const UserProfile = () => {
         }
     }, [logOut])
 
-    // Delete Btn Functionality
+    // delete profile pic api logic
+    const deleteProfilePic = useCallback((user) => {
+        let storageRef = firebase.storage().ref();
+        let desertRef = storageRef.child(`/users/${user.uid}/profile`)
+        desertRef.delete().then(() => {
+            notify("success", "Profile pic deleted", 2000)
+            setProfilePic("")
+            user.updateProfile({ photoURL: "" })
+        }).catch(error => {
+            notify("error", error.message, 5000)
+        })
+    }, [])
+
+    // Delete account permanently Btn Functionality
     useEffect(() => {
         document.getElementById("deleteBtn").addEventListener("click", (e) => {
             e.preventDefault()
@@ -119,6 +132,7 @@ const UserProfile = () => {
                         label: 'Yes',
                         onClick: () => {
                             try {
+                                deleteProfilePic(firebase.auth().currentUser)
                                 firebase.auth().onAuthStateChanged((user) => {
                                     user.delete().then(() => {
                                         localStorage.clear()
@@ -140,8 +154,9 @@ const UserProfile = () => {
                 ]
             });
         })
-    }, [dispatch, history, logOut]);
+    }, [dispatch, history, logOut, deleteProfilePic]);
 
+    // upload profile Pic pure logic api
     const uploadProfilePic = useCallback((user) => {
         const storageRef = firebase.storage().ref().child(`/users/${user.uid}/profile`)
         const uploadTask = storageRef.put(newProfilePic)
@@ -149,10 +164,11 @@ const UserProfile = () => {
             let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
             console.log(progress);
         }, (error) => {
-            console.log(error.message);
+            notify("error", error.message, 5000);
             setProfilePicValidate(false)
         }, () => {
             setProfilePicValidate(true)
+            notify("success", "Pic updated successfully", 3000)
             uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                 user.updateProfile({ photoURL: downloadURL })
             });
@@ -169,16 +185,39 @@ const UserProfile = () => {
         }
     }, [usernameValidate, emailValidate, profilePicValidate])
 
+    // Pic_delete icon logo functionality
     useEffect(() => {
+        const deletePicIcon = document.getElementById("deletePicIcon")
+        let iTag = document.getElementById("iTag")
+        if (deletePicIcon) {
+            deletePicIcon.addEventListener("mouseover", () => {
+                iTag.classList = "bi bi-trash-fill"
+                deletePicIcon.style.cursor = "pointer"
+                deletePicIcon.onclick = () => {
+                    const user = firebase.auth().currentUser
+                    if (user) {
+                        deleteProfilePic(user)
+                    }
+                }
+            })
+            deletePicIcon.addEventListener("mouseleave", () => {
+                iTag.classList = "bi bi-trash"
+            })
+        }
+    });
+
+    // pic uploading by html tag functionality handle
+    useEffect(() => {
+        const user = firebase.auth().currentUser
         if (newProfilePic) {
             setProfilePicValidate(false)
-            const user = firebase.auth().currentUser
             uploadProfilePic(user)
-        }else{
+        } else {
             setProfilePicValidate(true)
         }
     }, [newProfilePic, uploadProfilePic])
 
+    // Update email and username functionality
     const updateInformation = (e) => {
         e.preventDefault()
         const user = firebase.auth().currentUser
@@ -202,7 +241,10 @@ const UserProfile = () => {
             <h3>Your Information</h3>
 
             {profilePic ?
-                <img src={profilePic} id="showImg" alt="NoImg" width="10%" />
+                <>
+                    <img src={profilePic} id="showImg" alt="NoImg" width="10%" />
+                    <span id="deletePicIcon"><i id="iTag" className="bi bi-trash" style={{ fontSize: "25px" }}></i></span>
+                </>
                 : <></>
             }
             <form onSubmit={(e) => updateInformation(e)}>
@@ -240,10 +282,7 @@ const UserProfile = () => {
                     <input type="submit" id="updateBtn" value="Update Information" className="btn btn-danger btn-sm w-25" />
                 </div>
             </form>
-
-            <div className="text-center">
-                <input type="button" id="deleteBtn" value="Delete Account" className="btn btn-info btn-sm" />
-            </div>
+            <input type="button" id="deleteBtn" value="Delete Account" className="btn btn-info btn-sm" />
         </div>
     )
 }

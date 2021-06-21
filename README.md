@@ -3,10 +3,10 @@
 Todo App: note-taking website
 
 ## Frontend Technology
-Bootstrap 5 | React JS | React Native
+Bootstrap 5 | React JS
 
 ## Backend Technology
-Django | Django Rest Framework
+Google Firebase
 
 ## Features
 - User signin, signup and signout
