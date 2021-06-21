@@ -15,10 +15,13 @@ const override = css`
 
 const Signup = () => {
     const history = useHistory()
+    const [username, setUsername] = useState('')
     const [email, setEmail] = useState('')
+    const [profilePic, setProfilePic] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     // state for submit button validation start
+    const [usernameValidate, setUsernameValidate] = useState(false)
     const [emailValidate, setEmailValidate] = useState(false)
     const [passwordValidate, setPasswordValidate] = useState(false)
     const [confirmPasswordValidate, setConfirmPasswordValidate] = useState(false)
@@ -38,7 +41,7 @@ const Signup = () => {
         let matchPassword = document.getElementById("matchPassword")
         let pass1 = document.getElementById("pass1")
         let pass2 = document.getElementById("pass2")
-        if (emailValidate && passwordValidate && confirmPasswordValidate) {
+        if (usernameValidate && emailValidate && passwordValidate && confirmPasswordValidate &&profilePic) {
             if (checkPassword(password, confirmPassword)) {
                 document.getElementById('submitBtn').disabled = false
                 matchPasswordValid(matchPassword, pass1, pass2)
@@ -51,7 +54,34 @@ const Signup = () => {
         else {
             document.getElementById('submitBtn').disabled = true
         }
-    }, [emailValidate, passwordValidate, confirmPasswordValidate, confirmPassword, password]);
+    }, [usernameValidate, emailValidate, passwordValidate, profilePic, confirmPasswordValidate, confirmPassword, password]);
+
+    const usernameValidation = (e) => {
+        let Value = e.target.value
+        setUsername(Value)
+        let regex = /^(?=.*[0-9])[a-zA-Z0-9!@#$%^&*]{5,15}$/
+        let usernameMsg = document.getElementById("usernameMsg")
+        if (Value) {
+            if (Value.match(regex) !== null) {
+                setUsername(Value)
+                if (checkLength(Value, 5, 15, e, usernameMsg)) {   // Value, MinValue, MaxValue, event, usernameMsg
+                    setUsernameValidate(true)
+                }
+                else {
+                    setUsernameValidate(false)
+                }
+            }
+            else {
+                setUsername(Value)
+                let msg = "** Username Incorrect"
+                MainFieldValidationCheck(e, usernameMsg, msg)
+                setUsernameValidate(false)
+            }
+        }
+        else {
+            undefinedValueLength(e, usernameMsg)
+        }
+    }
 
     const emailValidation = (e) => {
         let Value = e.target.value
@@ -140,17 +170,35 @@ const Signup = () => {
         confirmPasswordEyeValidation()
     }, []);
 
+    const uploadProfilePic = (user) => {
+        const storageRef = firebase.storage().ref().child(`/users/${user.uid}/profile`)
+        const uploadTask = storageRef.put(profilePic)
+        uploadTask.on('state_changed', (snapshot) => {
+            let progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(progress);
+        }, (error) => {
+            console.log(error.message);
+        }, () => {
+            console.log("Image Uploaded");
+            uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
+                user.updateProfile({ photoURL: downloadURL })
+            });
+        })
+    }
+
     const submitForm = async (e) => {
         e.preventDefault()
         setLoading(true)
         try {
             await firebase.auth().createUserWithEmailAndPassword(email, password).then((user) => {
-                // user.user.
-                user.user.sendEmailVerification().then(() => {
-                    notify("info", `We sent a mail to ${email} for email verification! Please verify your email! If email ${email} is invallid then the request is automatically killed!`, 8000)
-                    history.push('/login')
-                }).catch(error => {
-                    notify("error", `We not verify your email ${email}! Please try again`, 5000)
+                user.user.updateProfile({ displayName: username }).then(() => {
+                    uploadProfilePic(user.user)
+                    user.user.sendEmailVerification().then(() => {
+                        notify("info", `We sent a mail to ${email} for email verification! Please verify your email! If email ${email} is invallid then the request is automatically killed!`, 8000)
+                        history.push('/login')
+                    }).catch(error => {
+                        notify("error", `We not verify your email ${email}! Please try again`, 5000)
+                    })
                 })
             }).catch(error => {
                 notify("error", error.message, 4000)
@@ -169,10 +217,31 @@ const Signup = () => {
                 <form onSubmit={submitForm}>
                     <div className="row">
 
-                        <div className="mb-3">
-                            <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="email" className="form-label">Email address</label>
-                            <input required type="email" className="form-control" id="email" placeholder="name@example.com" onChange={(e) => emailValidation(e)} value={email} />
-                            <div id="emailMsg"></div>
+                        <div className="col-md-6">
+                            <div className="mb-3">
+                                <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="username" className="form-label">Username</label>
+                                <input required type="text" className="form-control" id="username" placeholder="Please type a username" onChange={(e) => usernameValidation(e)} value={username} />
+                                <div id="usernameMsg"></div>
+                            </div>
+                        </div>
+
+                        <div className="col-md-6">
+                            <div className="mb-3">
+                                <span style={{ color: "red", fontWeight: "bolder" }}>*</span>&nbsp;<label htmlFor="email" className="form-label">Email address</label>
+                                <input required type="email" className="form-control" id="email" placeholder="name@example.com" onChange={(e) => emailValidation(e)} value={email} />
+                                <div id="emailMsg"></div>
+                            </div>
+                        </div>
+
+                        <div className="col-md-6">
+                            <label htmlFor="formFile" className="form-label">Upload profile pic</label>
+                            <div className="mb-3 input-group">
+                                <input className="form-control" type="file" id="formFile" accept="image/*" onChange={(e) => setProfilePic(e.target.files[0])} />
+                                {profilePic ?
+                                    <img src={URL.createObjectURL(profilePic)} width="8%" className="input-group-text" alt="No Img" />
+                                    : <></>
+                                }
+                            </div>
                         </div>
 
                         <div className="col-md-6">

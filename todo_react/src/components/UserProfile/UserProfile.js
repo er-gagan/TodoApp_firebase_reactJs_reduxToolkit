@@ -37,6 +37,7 @@ const UserProfile = () => {
         try {
             firebase.auth().onAuthStateChanged((user) => {
                 const userInfo = getAuthorizedData(user)
+                console.log(userInfo);
                 setUsername(userInfo['username'])
                 setEmail(userInfo['email'])
                 setProfilePic(userInfo['photoUrl'])
