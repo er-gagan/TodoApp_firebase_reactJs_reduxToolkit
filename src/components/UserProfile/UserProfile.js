@@ -112,7 +112,6 @@ const UserProfile = () => {
         let storageRef = firebase.storage().ref();
         let desertRef = storageRef.child(`/users/${user.uid}/profile`)
         desertRef.delete().then(() => {
-            notify("success", "Profile pic deleted", 2000)
             setProfilePic("")
             user.updateProfile({ photoURL: "" })
         }).catch(error => {
@@ -166,14 +165,16 @@ const UserProfile = () => {
         }, (error) => {
             notify("error", error.message, 5000);
             setProfilePicValidate(false)
+            deleteProfilePic(user)
         }, () => {
             setProfilePicValidate(true)
             notify("success", "Pic updated successfully", 3000)
             uploadTask.snapshot.ref.getDownloadURL().then((downloadURL) => {
                 user.updateProfile({ photoURL: downloadURL })
+                setProfilePic(downloadURL)
             });
         })
-    }, [newProfilePic])
+    }, [newProfilePic, deleteProfilePic])
 
     // Update btn hide and show logic
     useEffect(() => {
@@ -220,17 +221,20 @@ const UserProfile = () => {
     // Update email and username functionality
     const updateInformation = (e) => {
         e.preventDefault()
-        const user = firebase.auth().currentUser
         try {
-            user.updateProfile({ displayName: username }).then(() => {
-                user.updateEmail(email).then(() => {
-                    notify("success", "Information is updated successfully", 4000)
-                }).catch(error => {
-                    notify("error", error.message, 5000)
-                })
-            }).catch(error => {
-                notify("error", error.message, 5000)
-            })
+            const user = firebase.auth().currentUser
+            if (user.displayName.toString() !== username.toString()) {
+                user.updateProfile({ displayName: username })
+                notify("success", "Information is updated successfully", 3000)
+            } else {
+                notify("info", "Old and new username is match! Therefore username cann't update", 3000)
+            }
+            if (user.email.toString() !== email.toString()) {
+                user.updateEmail(email)
+                notify("success", "Information is updated successfully", 3000)
+            } else {
+                notify("info", "Old and new email is match! Therefore email cann't update", 3000)
+            }
         } catch {
             logOut()
         }
