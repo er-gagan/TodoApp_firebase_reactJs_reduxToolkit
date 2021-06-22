@@ -94,7 +94,7 @@ const Form = () => {
                     <textarea required type="text" className="form-control" onChange={(e) => setDesc(e.target.value)} id="desc" placeholder="Enter work description" rows="5"></textarea>
                 </div>
                 <div className="text-center">
-                    <button type="submit" className="btn btn-danger btn-sm w-25">Submit</button>
+                    <button type="submit" className="btn btn-danger btn-sm">Submit</button>
                 </div>
             </form>
             <ToastContainer />

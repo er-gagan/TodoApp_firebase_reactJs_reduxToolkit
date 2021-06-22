@@ -131,15 +131,16 @@ const UserProfile = () => {
                         label: 'Yes',
                         onClick: () => {
                             try {
-                                deleteProfilePic(firebase.auth().currentUser)
-                                firebase.auth().onAuthStateChanged((user) => {
-                                    user.delete().then(() => {
-                                        localStorage.clear()
-                                        dispatch(deleteAllTodos([]))
-                                        dispatch(addToken(null))
-                                        history.push('/')
-                                        notify("success", "Your account is deleted permanently!", 5000)
-                                    })
+                                const user = firebase.auth().currentUser
+                                if(user.photoURL){
+                                    deleteProfilePic(user)
+                                }
+                                user.delete().then(() => {
+                                    localStorage.clear()
+                                    dispatch(deleteAllTodos([]))
+                                    dispatch(addToken(null))
+                                    history.push('/')
+                                    notify("success", "Your account is deleted permanently!", 5000)
                                 })
                             }
                             catch {
@@ -283,10 +284,10 @@ const UserProfile = () => {
 
                 </div>
                 <div className="text-center">
-                    <input type="submit" id="updateBtn" value="Update Information" className="btn btn-danger btn-sm w-25" />
+                    <input type="submit" id="updateBtn" value="Update Information" className="btn btn-danger btn-sm" />
                 </div>
             </form>
-            <input type="button" id="deleteBtn" value="Delete Account" className="btn btn-info btn-sm" />
+            <input type="button" id="deleteBtn" value="Delete Account" className="btn btn-info btn-sm m-3" />
         </div>
     )
 }

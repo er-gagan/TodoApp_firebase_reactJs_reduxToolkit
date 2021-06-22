@@ -195,7 +195,7 @@ const ChangePassword = () => {
                 </div>
 
                 <div className="text-center">
-                    <input type="submit" value="Submit" id="btnSubmit" className="btn btn-danger btn-sm w-25" />
+                    <input type="submit" value="Submit" id="btnSubmit" className="btn btn-danger btn-sm" />
                 </div>
             </form>
         </div>

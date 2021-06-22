@@ -200,7 +200,7 @@ const Login = () => {
                             </div>
 
                             <div className="text-center">
-                                <input type="submit" value="Login" id="loginBtn" className="btn btn-danger btn-sm w-25" />
+                                <input type="submit" value="Login" id="loginBtn" className="btn btn-danger btn-sm" />
                             </div>
                         </form>
                         <div className="text-center">

@@ -27,7 +27,7 @@ const Navbar = () => {
             dispatch(deleteAllTodos([]))
             dispatch(addToken(null))
             history.push("/login");
-            notify("success", "Successfully logged out!", 4000)
+            notify("success", "Successfully logged out!", 3000)
         }).catch((error) => {
             notify("error", `${error.message}, You haven't signout!`, 4000)
         })
